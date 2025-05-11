@@ -1,0 +1,30 @@
+name: update-image-daily
+on:
+  schedule:
+    # 09:05 UTC == 02:05 PDT (America/Los_Angeles)
+    - cron:  '5 9 * * *'
+  workflow_dispatch:   # allows manual runs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install openai requests --quiet
+      - run: python generate.py
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - name: Commit & push if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [[ `git status --porcelain` ]]; then
+            git add daily.png daily.json
+            git commit -m "chore: daily image $(date -u +"%F")"
+            git push
+          else
+            echo "No changes, nothing to commit."
+          fi
