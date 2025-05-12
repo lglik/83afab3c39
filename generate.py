@@ -29,7 +29,7 @@ def main():
     # (optional) JSON metadata still useful if you want it
     with open("83afab3c39.json", "w") as j:
         json.dump(
-            {"prompt": PROMPT, "generated": datetime.datetime.utcnow().isoformat() + "Z", "source_url": url},
+            {"prompt": PROMPT, "generated": datetime.datetime.utcnow().isoformat() + "Z"},
             j, indent=2
         )
         
