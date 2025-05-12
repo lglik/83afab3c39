@@ -2,6 +2,7 @@
 import os, requests, datetime, json
 from openai import OpenAI
 
+
 PROMPT = os.getenv(
     "IMAGE_PROMPT",
     "A whimsical, high-contrast illustration of a sunrise over the Pacific Ocean, "
@@ -9,8 +10,8 @@ PROMPT = os.getenv(
 )
 
 def main():
-    client = OpenAI()                       # uses env var OPENAI_API_KEY
-    resp = client.images.generate(          # or client.images.create for DALLE-3
+    client = OpenAI()
+    resp = client.images.generate(
         model="gpt-image-1",
         prompt=PROMPT,
         n=1,
@@ -18,17 +19,17 @@ def main():
         response_format="url",
     )
     url = resp.data[0].url
-    img = requests.get(url, timeout=30).content
+    png = requests.get(url, timeout=30).content
     with open("83afab3c39.png", "wb") as f:
-        f.write(img)
-    # Add metadata file so every commit has a diff even if the art is identical
-    meta = {
-        "prompt": PROMPT,
-        "generated": datetime.datetime.utcnow().isoformat() + "Z",
-        "source_url": url
-    }
-    with open("daily.json", "w") as m:
-        json.dump(meta, m, indent=2)
+        f.write(png)
 
-if __name__ == "__main__":
-    main()
+    # ↓ NEW: plain-text page containing only the prompt (one line)
+    with open("83afab3c39.txt", "w", encoding="utf-8") as t:
+        t.write(PROMPT + "\n")
+
+    # (optional) JSON metadata still useful if you want it
+    with open("83afab3c39.json", "w") as j:
+        json.dump(
+            {"prompt": PROMPT, "generated": datetime.datetime.utcnow().isoformat() + "Z", "source_url": url},
+            j, indent=2
+        )
