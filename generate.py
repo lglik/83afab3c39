@@ -33,3 +33,7 @@ def main():
             {"prompt": PROMPT, "generated": datetime.datetime.utcnow().isoformat() + "Z", "source_url": url},
             j, indent=2
         )
+        
+
+if __name__ == "__main__":
+    main()
