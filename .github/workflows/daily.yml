@@ -28,7 +28,7 @@ jobs:
       - name: Show post-generate status   # DEBUG – keep until it works
         run: |
           echo "CWD: $(pwd)"
-          ls -l daily.* || true
+          ls -l 83afab3c39.* || true
           git status -s
 
       - name: Commit & push
