@@ -1,7 +1,7 @@
 name: update-image-daily
 
-permissions:          # <-- add this block
-  contents: write
+permissions:
+  contents: write          # ← essential for push
 
 on:
   schedule:
@@ -14,27 +14,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install openai requests --quiet
+
+      - run: pip install --quiet openai requests
+
       - name: Run generator
-        run: |
-          python generate.py
-          echo "---- git status after generate ----"
-          git status -s
-          ls -l daily.png daily.txt daily.json || true
+        run: python -u generate.py
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-      - name: Commit & push if changed
+      - name: Show post-generate status   # DEBUG – keep until it works
+        run: |
+          echo "CWD: $(pwd)"
+          ls -l daily.* || true
+          git status -s
+
+      - name: Commit & push
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [[ `git status --porcelain` ]]; then
-            git add 83afab3c39.png 83afab3c39.json 83afab3c39.txt
-            git commit -m "chore: daily image $(date -u +"%F")"
-            git push
-          else
-            echo "No changes, nothing to commit."
-          fi
+
+          git add -A
+          git diff --cached --quiet && echo "No changes" && exit 0
+
+          git commit -m "chore: daily image $(date -u +'%F')"
+          git push
