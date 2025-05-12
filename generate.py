@@ -10,6 +10,9 @@ PROMPT = os.getenv(
 )
 
 def main():
+    # sanity check about where this is executed
+    print("CWD:", os.getcwd())
+    
     client = OpenAI()
     resp = client.images.generate(
         model="gpt-image-1",
