@@ -22,7 +22,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if [[ `git status --porcelain` ]]; then
-            git add daily.png daily.json
+            git add 83afab3c39.png 83afab3c39.json 83afab3c39.txt
             git commit -m "chore: daily image $(date -u +"%F")"
             git push
           else
