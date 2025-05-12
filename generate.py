@@ -19,11 +19,10 @@ def main():
         prompt=PROMPT,
         n=1,
         size="1024x1024",
-        response_format="url",
     )
 
-    if not resp.data or not resp.data[0].url:
-        raise RuntimeError("Image generation returned no URL!")
+    if not resp.data:
+        raise RuntimeError("Image generation returned no URL")
         
     url = resp.data[0].url
     png = requests.get(url, timeout=30).content
