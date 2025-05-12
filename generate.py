@@ -10,6 +10,7 @@ PROMPT = os.getenv(
 )
 
 def main():
+    client = OpenAI()
     resp = client.images.generate(
         model="gpt-image-1",
         prompt=PROMPT,
