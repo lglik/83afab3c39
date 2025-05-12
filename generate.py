@@ -18,6 +18,10 @@ def main():
         size="1024x1024",
         response_format="url",
     )
+
+    if not resp.data or not resp.data[0].url:
+        raise RuntimeError("Image generation returned no URL!")
+        
     url = resp.data[0].url
     png = requests.get(url, timeout=30).content
     with open("83afab3c39.png", "wb") as f:
