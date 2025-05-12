@@ -14,9 +14,15 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install openai requests --quiet
-      - run: python generate.py
+      - name: Run generator
+        run: |
+          python generate.py
+          echo "---- git status after generate ----"
+          git status -s
+          ls -l daily.png daily.txt daily.json || true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
       - name: Commit & push if changed
         run: |
           git config user.name  "github-actions[bot]"
