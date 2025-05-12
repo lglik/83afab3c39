@@ -1,5 +1,5 @@
 # generate.py  (Python ≥3.9, requires `openai` and `requests`)
-import os, requests, datetime, json
+import os, base64, datetime, json
 from openai import OpenAI
 
 
@@ -10,22 +10,14 @@ PROMPT = os.getenv(
 )
 
 def main():
-    # sanity check about where this is executed
-    print("CWD:", os.getcwd())
-    
-    client = OpenAI()
     resp = client.images.generate(
         model="gpt-image-1",
         prompt=PROMPT,
         n=1,
         size="1024x1024",
     )
-
-    if not resp.data:
-        raise RuntimeError("Image generation returned no URL")
-        
-    url = resp.data[0].url
-    png = requests.get(url, timeout=30).content
+    image_b64 = resp.data[0].b64_json
+    png = base64.b64decode(image_b64)
     with open("83afab3c39.png", "wb") as f:
         f.write(png)
 
@@ -40,6 +32,5 @@ def main():
             j, indent=2
         )
         
-
 if __name__ == "__main__":
     main()
