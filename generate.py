@@ -39,42 +39,63 @@ PROMPT = os.getenv("IMAGE_PROMPT") or get_new_image_prompt()
 # ----------------------------------------------------------------------
 
 def add_banner(png_bytes: bytes, caption: str) -> bytes:
-    """Return new PNG bytes with a semi-transparent banner & caption."""
+    """
+    Return PNG bytes with a fixed-height (12 %) semi-transparent banner
+    at the bottom and a centered caption.  If the text is too tall or
+    wide, the font size is reduced until it fits.
+    """
     base = Image.open(BytesIO(png_bytes)).convert("RGBA")
     w, h = base.size
-    banner_h = int(h * 0.12)               # 12 % of image height
-    banner_y0 = h - banner_h
 
-    # Draw banner (black @ 50 % opacity)
+    banner_h   = int(h * 0.12)          # fixed height (no expansion)
+    banner_y0  = h - banner_h
+    margin     = int(w * 0.03)          # side/top/bottom padding
+    max_width  = w - 2 * margin
+    max_height = banner_h - 2 * margin
+
+    # Draw the banner rectangle first
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    draw.rectangle([0, banner_y0, w, h], fill=(0, 0, 0, 128))  # 128 ≈ 50 %
+    draw    = ImageDraw.Draw(overlay)
+    draw.rectangle([0, banner_y0, w, h], fill=(0, 0, 0, 128))  # 50 % black
 
-    # Choose a font (falls back to default if DejaVu not present)
-    try:
-        font = ImageFont.truetype("DejaVuSans-Bold.ttf", int(banner_h * 0.5))
-    except IOError:
-        font = ImageFont.load_default()
+    # Helper to get a truetype font or default fallback
+    def make_font(px: int) -> ImageFont.FreeTypeFont:
+        try:
+            return ImageFont.truetype("DejaVuSans-Bold.ttf", px)
+        except IOError:
+            return ImageFont.load_default()
 
-    # Wrap text if it’s too wide
-    margin = int(w * 0.03)
-    max_text_width = w - 2 * margin
-    wrapped = textwrap.fill(caption, width=40)
-        # -- measure wrapped text -------------------------------------------------
-    try:
-        # Pillow ≥8.0
-        x0, y0, x1, y1 = draw.multiline_textbbox((0, 0), wrapped, font=font)
-        txt_w, txt_h = (x1 - x0, y1 - y0)
-    except AttributeError:                 # Pillow <8 → still has *textsize*
-        txt_w, txt_h = draw.multiline_textsize(wrapped, font=font)
+    # Start with a font size ~55 % of banner height and shrink as needed
+    font_px = int(banner_h * 0.55)
+    font    = make_font(font_px)
 
-    
+    # Word-wrap once at 40 chars; later only font size shrinks
+    wrapped_caption = textwrap.fill(caption, width=40)
+
+    while True:
+        # Measure bounding box for the wrapped text
+        try:
+            bbox = draw.multiline_textbbox((0, 0), wrapped_caption, font=font)
+            txt_w, txt_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        except AttributeError:  # Pillow <8
+            txt_w, txt_h = draw.multiline_textsize(wrapped_caption, font=font)
+
+        if txt_w <= max_width and txt_h <= max_height:
+            break  # fits!
+
+        # Reduce font size and try again; stop at a safe minimum
+        font_px -= 2
+        if font_px < 10:
+            break
+        font = make_font(font_px)
+
+    # Center text within the banner
     text_x = (w - txt_w) // 2
     text_y = banner_y0 + (banner_h - txt_h) // 2
 
     draw.multiline_text(
         (text_x, text_y),
-        wrapped,
+        wrapped_caption,
         font=font,
         fill=(255, 255, 255, 230),
         align="center",
