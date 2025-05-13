@@ -17,7 +17,7 @@ def get_new_image_prompt() -> str:
     system_msg = (
         "You are a prompt-writer for an image generation model. "
         "Each time you respond, output ONE imaginative, upbeat scene that would "
-        "look good as framed art on a wall."
+        "look good as framed art on a wall. Keep the prompt to 12 words or fewer."
     )
 
     resp = client.chat.completions.create(
@@ -37,12 +37,6 @@ PROMPT = os.getenv("IMAGE_PROMPT") or get_new_image_prompt()
 # ----------------------------------------------------------------------
 # 2. Helpers
 # ----------------------------------------------------------------------
-def shorten(txt: str, max_len: int = 60) -> str:
-    """Return a short version of *txt* that fits within *max_len* chars."""
-    if len(txt) <= max_len:
-        return txt
-    cut = txt[: max_len + 1]     # +1 so we can safely strip last word
-    return cut.rsplit(" ", 1)[0] + "…"
 
 def add_banner(png_bytes: bytes, caption: str) -> bytes:
     """Return new PNG bytes with a semi-transparent banner & caption."""
@@ -106,7 +100,7 @@ def main() -> None:
     png_bytes = base64.b64decode(image_b64)
 
     # Create png with banner
-    banner_png = add_banner(png_bytes, shorten(PROMPT))
+    banner_png = add_banner(png_bytes, PROMPT)
     with open(f"{OUT_STEM}.png", "wb") as f:
         f.write(banner_png)
 
