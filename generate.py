@@ -105,13 +105,9 @@ def main() -> None:
     image_b64 = resp.data[0].b64_json
     png_bytes = base64.b64decode(image_b64)
 
-    # Save original
-    with open(f"{OUT_STEM}.png", "wb") as f:
-        f.write(png_bytes)
-
-    # Create banner version
+    # Create png with banner
     banner_png = add_banner(png_bytes, shorten(PROMPT))
-    with open(f"{OUT_STEM}_banner.png", "wb") as f:
+    with open(f"{OUT_STEM}.png", "wb") as f:
         f.write(banner_png)
 
     # Plain-text file with just the prompt
