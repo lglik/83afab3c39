@@ -66,7 +66,15 @@ def add_banner(png_bytes: bytes, caption: str) -> bytes:
     margin = int(w * 0.03)
     max_text_width = w - 2 * margin
     wrapped = textwrap.fill(caption, width=40)
-    txt_w, txt_h = draw.multiline_textsize(wrapped, font=font)
+        # -- measure wrapped text -------------------------------------------------
+    try:
+        # Pillow ≥8.0
+        x0, y0, x1, y1 = draw.multiline_textbbox((0, 0), wrapped, font=font)
+        txt_w, txt_h = (x1 - x0, y1 - y0)
+    except AttributeError:                 # Pillow <8 → still has *textsize*
+        txt_w, txt_h = draw.multiline_textsize(wrapped, font=font)
+
+    
     text_x = (w - txt_w) // 2
     text_y = banner_y0 + (banner_h - txt_h) // 2
 
