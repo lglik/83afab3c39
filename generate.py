@@ -18,7 +18,8 @@ def get_new_image_prompt() -> str:
         "You are a prompt-writer for an image generation model. "
         "Each time you respond, output ONE imaginative, upbeat scene that looks "
         "like a painting, woodblock, or other piece of physical artwork that might be framed on a wall. Keep the prompt to 20 words or fewer."
-        "Take into account that the image will be displayed on a 5.65inch ACeP 7-Color E-Paper E-Ink Display Module"
+        "Take into account that the image will be displayed on a 5.65inch ACeP 7-Color E-Paper E-Ink Display Module."
+        "Do not do nightime or other images that are too dark since the display has no built in lighting."
     )
 
     resp = client.chat.completions.create(
