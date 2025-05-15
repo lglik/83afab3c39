@@ -42,62 +42,87 @@ PROMPT = os.getenv("IMAGE_PROMPT") or get_new_image_prompt()
 def add_banner(png_bytes: bytes, caption: str) -> bytes:
     """
     Return PNG bytes with a fixed-height (12 %) semi-transparent banner
-    at the bottom and a centered caption.  If the text is too tall or
-    wide, the font size is reduced until it fits.
+    at the bottom and a caption that is automatically scaled to use the
+    full banner area (width *and* height) without overflowing.
     """
     base = Image.open(BytesIO(png_bytes)).convert("RGBA")
     w, h = base.size
 
-    banner_h   = int(h * 0.12)          # fixed height (no expansion)
+    banner_h   = int(h * 0.12)            # fixed banner height
     banner_y0  = h - banner_h
-    margin     = int(w * 0.03)          # side/top/bottom padding
+    margin     = int(w * 0.03)            # inner padding on all sides
     max_width  = w - 2 * margin
     max_height = banner_h - 2 * margin
 
-    # Draw the banner rectangle first
+    # --- draw dark translucent banner ---------------------------------
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
     draw    = ImageDraw.Draw(overlay)
-    draw.rectangle([0, banner_y0, w, h], fill=(0, 0, 0, 128))  # 50 % black
+    draw.rectangle([0, banner_y0, w, h], fill=(0, 0, 0, 128))   # 50 % black
 
-    # Helper to get a truetype font or default fallback
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
     def make_font(px: int) -> ImageFont.FreeTypeFont:
         try:
             return ImageFont.truetype("DejaVuSans-Bold.ttf", px)
-        except IOError:
+        except IOError:                       # fall back to built-in bitmap
             return ImageFont.load_default()
 
-    # Start with a font size ~55 % of banner height and shrink as needed
-    font_px = int(banner_h * 0.55)
-    font    = make_font(font_px)
+    def wrap_to_pixels(text: str, font: ImageFont.FreeTypeFont) -> str:
+        """
+        Greedy word-wrap that inserts line-breaks so no line exceeds
+        `max_width` in rendered pixel length.
+        """
+        lines, current = [], []
+        for word in text.split():
+            test = " ".join(current + [word])
+            if draw.textlength(test, font=font) <= max_width:
+                current.append(word)
+            else:                              # start new line
+                lines.append(" ".join(current))
+                current = [word]
+        lines.append(" ".join(current))
+        return "\n".join(lines)
 
-    # Word-wrap once at 40 chars; later only font size shrinks
-    wrapped_caption = textwrap.fill(caption, width=40)
+    # ------------------------------------------------------------------
+    # choose the *largest* font that still fits (binary search)
+    # ------------------------------------------------------------------
+    low, high = 10, max_height           # px bounds; 10 is safe minimum
+    best_font, best_text, best_bbox = None, None, None
 
-    while True:
-        # Measure bounding box for the wrapped text
-        try:
-            bbox = draw.multiline_textbbox((0, 0), wrapped_caption, font=font)
-            txt_w, txt_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-        except AttributeError:  # Pillow <8
-            txt_w, txt_h = draw.multiline_textsize(wrapped_caption, font=font)
+    while low <= high:
+        mid   = (low + high) // 2
+        font  = make_font(mid)
+        text  = wrap_to_pixels(caption, font)
+        bbox  = draw.multiline_textbbox((0, 0), text, font=font)
 
+        txt_w, txt_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
         if txt_w <= max_width and txt_h <= max_height:
-            break  # fits!
+            # fits – try a *larger* font
+            best_font, best_text, best_bbox = font, text, (txt_w, txt_h)
+            low = mid + 1
+        else:
+            # too large – shrink
+            high = mid - 1
 
-        # Reduce font size and try again; stop at a safe minimum
-        font_px -= 2
-        if font_px < 10:
-            break
-        font = make_font(font_px)
+    # safety fallback (should never trigger)
+    if best_font is None:
+        best_font = make_font(10)
+        best_text = wrap(caption, width=40)
+        txt_w, txt_h = draw.multiline_textbbox((0, 0), best_text, font=best_font)[2:]
+    else:
+        txt_w, txt_h = best_bbox
 
-    # Center text within the banner
+    # ------------------------------------------------------------------
+    # render
+    # ------------------------------------------------------------------
     text_x = (w - txt_w) // 2
     text_y = banner_y0 + (banner_h - txt_h) // 2
 
     draw.multiline_text(
         (text_x, text_y),
-        wrapped_caption,
-        font=font,
+        best_text,
+        font=best_font,
         fill=(255, 255, 255, 230),
         align="center",
     )
